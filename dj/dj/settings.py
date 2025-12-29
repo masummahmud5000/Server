@@ -126,3 +126,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+TIME_ZONE = 'Asia/Dhaka'
+USE_TZ = True
