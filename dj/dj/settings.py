@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     # 'django'
     'master',
     'rest_framework',
-    # 'rest_framework_simplejwt'
+    'rest_framework_simplejwt'
 
 ]
 
@@ -128,7 +128,14 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
 
 TIME_ZONE = 'Asia/Dhaka'
 USE_TZ = True
@@ -144,5 +151,6 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True 
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',)
 }
