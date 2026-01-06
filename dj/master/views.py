@@ -1,19 +1,56 @@
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import render
+import datetime
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import make_password
 
 from . models import Server
 from . serializers import Serializer
+
 # from django.http import HttpResponse
+class home(APIView):
+    def post(self, request):
+        name = request.data.get('name')
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        if not name or not username or not password:
+            return Response('error : Sob field dite hobe ', status=status.HTTP_404_NOT_FOUND)
+        else:
+            try:
+                if Server.objects.filter(username=username).exists():
+                    return Response('user Alredy Created!', status=status.HTTP_406_NOT_ACCEPTABLE)
+                else:
+                    user = Server.objects.create_user(
+                        username=username,
+                        name=name,
+                        password=password
+                    )
+                    return Response('Success: user Create', status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response(f'error: {str(e)}', status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Create your views here.
-class home(APIView):
-    def get(self, request, pk=None):
-        try:
-            querySet = Server.objects.all()
-            serial = Serializer(querySet, many=True)
-            return Response(serial.data)
+        
+#login View Created /////////////////////////////////////////
+class loginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
 
-        except Server.DoesNotExist:
-            return Response('Masum Software Foundation',status=status.HTTP_404_NOT_FOUND)
+        user = authenticate(username=username, password=password)
+
+        if not user:
+            return Response(f'error: user not found, {username} {password}', status=status.HTTP_401_UNAUTHORIZED)
+        else:
+            refresh = RefreshToken.for_user(user)
+            access = refresh.access_token
+            return Response({
+                'access': str(access),
+                'refresh': str(refresh),
+                # 'user': str(user)
+            }, status=status.HTTP_200_OK)
