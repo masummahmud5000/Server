@@ -1,12 +1,9 @@
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.shortcuts import render
-import datetime
-from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
-from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.exceptions import (TokenError, InvalidToken)
 
 from . models import Server
 from . serializers import Serializer
@@ -49,17 +46,10 @@ class loginView(APIView):
         else:
             refresh = RefreshToken.for_user(user)
             access = refresh.access_token
-            response = Response({'access': str(access)}, status=status.HTTP_200_OK)
-            
-            response.set_cookie(
-                key= 'refresh_token',
-                value= str(refresh),
-                httponly= True,
-                secure= False,
-                samesite= 'Lax',
-                max_age= 7*24*60*60   
-            )
-            return response
+            return Response({
+                'access_token' : str(access),
+                'refresh_token' : str(refresh)
+            }, status=status.HTTP_202_ACCEPTED)
 
             
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -77,3 +67,5 @@ class Profile(APIView):
             'username': user.username,
             'balance': user.balance
         })
+    
+#//////////////////////////////////////////////////////
