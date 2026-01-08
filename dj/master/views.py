@@ -42,10 +42,11 @@ class loginView(APIView):
         user = authenticate(username=username, password=password)
 
         if not user:
-            return Response(f'error: user not found, {username} {password}', status=status.HTTP_401_UNAUTHORIZED)
+            return Response(f'error: user not found, {username} {password}', status=status.HTTP_404_NOT_FOUND)
         else:
             refresh = RefreshToken.for_user(user)
             access = refresh.access_token
+            
             return Response({
                 'access_token' : str(access),
                 'refresh_token' : str(refresh)
