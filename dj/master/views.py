@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.exceptions import (TokenError, InvalidToken)
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 from . models import Server
 from . serializers import Serializer
@@ -53,8 +55,6 @@ class loginView(APIView):
             }, status=status.HTTP_202_ACCEPTED)
 
             
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.permissions import IsAuthenticated
 
 class Profile(APIView):
 
@@ -63,10 +63,46 @@ class Profile(APIView):
     
     def get(self, request):
         user = request.user
-
+        username = user.username.title()
         return Response({
-            'username': user.username,
+            'username': username,
             'balance': user.balance
         })
     
 #//////////////////////////////////////////////////////
+class deposite (APIView):
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            balance = int(request.data.get('balance'))
+            wallet = request.user
+
+            wallet.balance += balance
+            wallet.save()
+            return Response("Successfull !")
+        except Exception as e:
+            return Response({'Error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# ///////////////////////////////////////////////////////////
+class withdraw(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        try:
+            balance = int(request.data.get('balance'))
+            wallet = request.user
+            if wallet.balance < balance:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            else:
+                wallet.balance -= balance
+                wallet.save()
+                return Response({'success': 'withdraw successful'}, status=status.HTTP_202_ACCEPTED)
+        except Exception as e :
+            return Response({'Error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
