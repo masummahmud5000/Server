@@ -6,10 +6,12 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.exceptions import (TokenError, InvalidToken)
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import get_user_model
 
 from . models import Server
 from . serializers import Serializer
 
+User = get_user_model()
 # from django.http import HttpResponse
 class home(APIView):
     def post(self, request):
@@ -44,7 +46,7 @@ class loginView(APIView):
         user = authenticate(username=username, password=password)
 
         if not user:
-            return Response(f'error: user not found, {username} {password}', status=status.HTTP_404_NOT_FOUND)
+            return Response(f'error: user not found', status=status.HTTP_404_NOT_FOUND)
         else:
             refresh = RefreshToken.for_user(user)
             access = refresh.access_token
@@ -77,12 +79,16 @@ class deposite (APIView):
     
     def post(self, request):
         try:
-            balance = int(request.data.get('balance'))
-            wallet = request.user
+            balance = int(request.data.get('balance', 0))
+            password = request.data.get('password')
 
-            wallet.balance += balance
-            wallet.save()
-            return Response("Successfull !")
+            user = request.user
+            if not user.check_password(password):
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            else:
+                user.balance += balance
+                user.save()
+                return Response(status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -94,15 +100,59 @@ class withdraw(APIView):
     def post(self, request):
 
         try:
-            balance = int(request.data.get('balance'))
-            wallet = request.user
-            if wallet.balance < balance:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
+            balance = int(request.data.get('balance',0))
+            password = request.data.get('password')
+
+            user = request.user
+
+            if not user.check_password(password):
+                return Response(status=status.HTTP_404_NOT_FOUND)
             else:
-                wallet.balance -= balance
-                wallet.save()
-                return Response({'success': 'withdraw successful'}, status=status.HTTP_202_ACCEPTED)
-        except Exception as e :
-            return Response({'Error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                if user.balance < balance:
+                    return Response(status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    user.balance -= balance
+                    user.save()
 
+                    return Response(status=status.HTTP_202_ACCEPTED)
+                # ////////////////////////
+        except:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+# //////////////////////////////// Send Money  ////////////////////////////////////////
+class sendMoney(APIView):
+    def post(self, request):
+        userId = request.data.get('userId')
+        balance = int(request.data.get('balance'))
+        password = request.data.get('password')
 
+        myObjects = request.user
+
+        try:
+            receiver = User.objects.filter(username=userId)
+
+            if not myObjects.check_password(password):
+                return Response({'Error':'password'})
+            else:
+                if not receiver.exists():
+                    return Response({'Error': 'userName'})
+                else:
+                    if myObjects.username == userId:
+                        return Response({'Error': 'self'})
+                    else:
+                        if myObjects.balance < balance:
+                            return Response({'Error': 'balance'})
+                        else:
+                            
+                            receiver_update = receiver.first()
+                            
+                            myObjects.balance -= balance
+                            myObjects.save()
+
+                            receiver_update.balance += balance
+                            receiver_update.save()
+
+                            return Response({'Error': 'success'})
+        except:
+            return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            

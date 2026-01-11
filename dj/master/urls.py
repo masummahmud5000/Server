@@ -9,5 +9,6 @@ urlpatterns = [
     path('refresh/', TokenRefreshView.as_view()),
     path('deposite/', views.deposite.as_view()),
     path('withdraw/', views.withdraw.as_view()),
+    path('sendMoney/', views.sendMoney.as_view()),
     # path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh')
 ]

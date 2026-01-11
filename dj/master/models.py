@@ -26,7 +26,7 @@ class Server(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=20)
     username = models.CharField(max_length=30, unique=True)
     joinDate = models.DateTimeField(auto_now_add=True)
-    balance = models.FloatField(max_length=10, default=1020)
+    balance = models.FloatField(max_length=10, default=0)
         
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
