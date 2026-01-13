@@ -7,8 +7,12 @@ from rest_framework_simplejwt.exceptions import (TokenError, InvalidToken)
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
+from decimal import Decimal
+from django.db import transaction
+from django.db.models import F
+from .paginations import trPagination
 
-from . models import Server
+from . models import Server, Transaction
 from . serializers import Serializer
 
 User = get_user_model()
@@ -74,45 +78,79 @@ class Profile(APIView):
 #//////////////////////////////////////////////////////
 class deposite (APIView):
 
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+    @transaction.atomic
     def post(self, request):
         try:
-            balance = int(request.data.get('balance', 0))
+            balance = Decimal(request.data.get('balance', 0))
             password = request.data.get('password')
 
             user = request.user
             if not user.check_password(password):
                 return Response(status=status.HTTP_404_NOT_FOUND)
             else:
-                user.balance += balance
-                user.save()
-                return Response(status=status.HTTP_202_ACCEPTED)
+                if balance <= 0:
+                    return Response(status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    user.balance = F('balance') + balance
+                    user.save()
+
+                    Transaction.objects.create(
+                        user=user,
+                        name='Deposite',
+                        amount=balance,
+                        status='Successfull',
+                    )
+                    
+                    return Response(status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 # ///////////////////////////////////////////////////////////
 class withdraw(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
+    # authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticated]
+    @transaction.atomic
     def post(self, request):
 
-        try:
-            balance = int(request.data.get('balance',0))
-            password = request.data.get('password')
+        balance = Decimal(request.data.get('balance'))
+        password = request.data.get('password')
+        charge = (balance / 1000) * Decimal(7.70)
+        update_charge = Decimal(charge + balance)
 
+        try:
             user = request.user
+            admin = User.objects.filter(username='admin').first()
 
             if not user.check_password(password):
                 return Response(status=status.HTTP_404_NOT_FOUND)
             else:
-                if user.balance < balance:
+                if user.balance < update_charge or update_charge <= 0:
                     return Response(status=status.HTTP_400_BAD_REQUEST)
                 else:
-                    user.balance -= balance
+                    user.balance = F('balance') - update_charge
                     user.save()
+                    admin.balance = F('balance') + update_charge
+                    admin.save()
+                    
+                    charge_history = f"{charge:.2f}"
+                    Transaction.objects.create(
+                        user=user,
+                        name='Withdraw',
+                        amount=str(balance),
+                        charge=str(charge_history),
+                        status='Send'
+                    )
+                    # print(admin.id)
+                    # print(charge_history, type(charge_history))
+                    Transaction.objects.create(
+                        user=admin,
+                        name='Withdraw',
+                        amount=f'{update_charge:.2f}',
+                        status='Receive'
+                    )
+                    # print(admin.id)
 
                     return Response(status=status.HTTP_202_ACCEPTED)
                 # ////////////////////////
@@ -121,15 +159,18 @@ class withdraw(APIView):
         
 # //////////////////////////////// Send Money  ////////////////////////////////////////
 class sendMoney(APIView):
+    @transaction.atomic
     def post(self, request):
         userId = request.data.get('userId')
-        balance = int(request.data.get('balance'))
+        balance = Decimal(request.data.get('balance'))
         password = request.data.get('password')
 
         myObjects = request.user
 
         try:
             receiver = User.objects.filter(username=userId)
+            charge = Decimal(4.50)
+            charge_update = Decimal(balance + charge)
 
             if not myObjects.check_password(password):
                 return Response({'Error':'password'})
@@ -140,16 +181,15 @@ class sendMoney(APIView):
                     if myObjects.username == userId:
                         return Response({'Error': 'self'})
                     else:
-                        if myObjects.balance < balance:
+                        if myObjects.balance < charge_update or balance <= 0:
                             return Response({'Error': 'balance'})
                         else:
-                            
                             receiver_update = receiver.first()
-                            
-                            myObjects.balance -= balance
+
+                            myObjects.balance = F('balance') - charge_update
                             myObjects.save()
 
-                            receiver_update.balance += balance
+                            receiver_update.balance = F('balance') + balance
                             receiver_update.save()
 
                             return Response({'Error': 'success'})

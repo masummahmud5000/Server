@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from decimal import Decimal
+from django.conf import settings
+
 class MyUserManager(BaseUserManager):
     def create_user(self, name, username, password=None):
         if not username:
@@ -26,7 +29,7 @@ class Server(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=20)
     username = models.CharField(max_length=30, unique=True)
     joinDate = models.DateTimeField(auto_now_add=True)
-    balance = models.FloatField(max_length=10, default=0)
+    balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
         
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
@@ -40,3 +43,19 @@ class Server(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.username
     
+
+class Transaction(models.Model):
+    # transactionType = (('s', 'Suceessfull'), ('f', 'Faile'))
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete= models.CASCADE,
+        related_name= 'transactions'
+    )
+    name = models.CharField(max_length=100)
+    amount = models.CharField(max_length=1000)
+    charge = models.CharField(max_length=1000, default='No Charge')
+    status = models.CharField(max_length=20)
+    time = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.user} - {self.name} - {self.amount}'
