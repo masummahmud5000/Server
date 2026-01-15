@@ -142,11 +142,11 @@ USE_TZ = True
 
 AUTH_USER_MODEL = 'master.Server'
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ]
-}
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': [
+#         'rest_framework_simplejwt.authentication.JWTAuthentication',
+#     ]
+# }
 SIMPLE_JWT = {
     # 'AUTH_COOKIE': 'refresh',
     'ACCESS_TOKEN_LIFETIME': timedelta(seconds=30),

@@ -11,9 +11,10 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import F
 from .paginations import trPagination
+from .serializers import trSerializer, DepoSerializer
 
 from . models import Server, Transaction
-from . serializers import Serializer
+from . import serializers
 
 User = get_user_model()
 # from django.http import HttpResponse
@@ -72,45 +73,43 @@ class Profile(APIView):
         username = user.username.title()
         return Response({
             'username': username,
-            'balance': user.balance
+            'balance': user.balance,
         })
+# /////////////////////////////////////////////////////
+class transactions(APIView):
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            querySet = Transaction.objects.filter(user=request.user).order_by('time')
+            serial = trSerializer(querySet, many=True)
+            return Response(serial.data)
+        except Exception as e:
+            return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 #//////////////////////////////////////////////////////
 class deposite (APIView):
 
-    # authentication_classes = [JWTAuthentication]
-    # permission_classes = [IsAuthenticated]
-    @transaction.atomic
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        try:
-            balance = Decimal(request.data.get('balance', 0))
-            password = request.data.get('password')
-
-            user = request.user
-            if not user.check_password(password):
-                return Response(status=status.HTTP_404_NOT_FOUND)
-            else:
-                if balance <= 0:
-                    return Response(status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    user.balance = F('balance') + balance
-                    user.save()
-
-                    Transaction.objects.create(
-                        user=user,
-                        name='Deposite',
-                        amount=balance,
-                        status='Successfull',
-                    )
-                    
-                    return Response(status=status.HTTP_202_ACCEPTED)
-        except Exception as e:
-            return Response({'Error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        serial = DepoSerializer(instance=request.user,data=request.data, context={'request': request})
+        if serial.is_valid():
+            serial.save()
+            return Response('success', status=status.HTTP_200_OK)
+        else:
+            return Response(serial.errors, status=status.HTTP_400_BAD_REQUEST)
         
 # ///////////////////////////////////////////////////////////
 class withdraw(APIView):
-    # authentication_classes = [JWTAuthentication]
-    # permission_classes = [IsAuthenticated]
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
     @transaction.atomic
     def post(self, request):
 
@@ -147,7 +146,8 @@ class withdraw(APIView):
                     Transaction.objects.create(
                         user=admin,
                         name='Withdraw',
-                        amount=f'{update_charge:.2f}',
+                        amount=str(balance),
+                        charge= str(charge_history),
                         status='Receive'
                     )
                     # print(admin.id)
@@ -159,6 +159,11 @@ class withdraw(APIView):
         
 # //////////////////////////////// Send Money  ////////////////////////////////////////
 class sendMoney(APIView):
+
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+
     @transaction.atomic
     def post(self, request):
         userId = request.data.get('userId')
@@ -191,6 +196,21 @@ class sendMoney(APIView):
 
                             receiver_update.balance = F('balance') + balance
                             receiver_update.save()
+
+                            Transaction.objects.create(
+                                user=myObjects,
+                                name='Send Money',
+                                amount= f"{balance:.2f}",
+                                charge=f"{charge:.2f}",
+                                status='Send'
+                            )
+                            Transaction.objects.create(
+                                user=receiver_update,
+                                name='Send Money',
+                                amount= f"{balance:.2f}",
+                                # charge=f"{charge:.2f}",
+                                status='Receive'
+                            )
 
                             return Response({'Error': 'success'})
         except:
