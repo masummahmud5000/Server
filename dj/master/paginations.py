@@ -1,6 +1,6 @@
-from rest_framework.pagination import LimitOffsetPagination
-from .models import Transaction
+from rest_framework.pagination import PageNumberPagination
+# from .models import Transaction
 
-class trPagination(LimitOffsetPagination):
-    default_limit = 5
-    max_limit = 20
+class trPagination(PageNumberPagination):
+    page_size = 10
+    

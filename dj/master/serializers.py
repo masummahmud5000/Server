@@ -4,6 +4,9 @@ from django.db import transaction
 from django.db.models import F
 from .models import Transaction
 from decimal import Decimal
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
 # /////////////////////////////////////////////////////////
 class registerSerializer(serializers.Serializer):
 
@@ -225,3 +228,29 @@ class sendSerializer(serializers.Serializer):
 
         except Exception as e:
             raise serializers.ValidationError({'Error': f'{e} Transation not Valid!'})
+
+# ////////////////////////////////////////////////////////////////////////////////////
+User = get_user_model()
+class loginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        username = attrs['username']
+        password = attrs['password']
+
+        # user_qs = User.objects.filter(username=username)
+        user = authenticate(username=username,password=password)
+        # alreadyPassword = Server.objects.filter(password)
+        if not user:
+            raise serializers.ValidationError('usernameInvalid')
+        else:    
+            refresh = RefreshToken.for_user(user)
+            access = refresh.access_token
+
+            return {
+                'access_token': str(access),
+                'refresh_token': str(refresh)
+            }
+        
+        
