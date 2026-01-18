@@ -230,7 +230,6 @@ class sendSerializer(serializers.Serializer):
             raise serializers.ValidationError({'Error': f'{e} Transation not Valid!'})
 
 # ////////////////////////////////////////////////////////////////////////////////////
-User = get_user_model()
 class loginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -239,17 +238,18 @@ class loginSerializer(serializers.Serializer):
         username = attrs['username']
         password = attrs['password']
 
-        # user_qs = User.objects.filter(username=username)
         user = authenticate(username=username,password=password)
-        # alreadyPassword = Server.objects.filter(password)
+
         if not user:
             raise serializers.ValidationError('usernameInvalid')
         else:    
             refresh = RefreshToken.for_user(user)
             access = refresh.access_token
 
+            refresh['is_staff'] = user.is_staff
+
             return {
-                'access_token': str(access),
+                'access_token': str(refresh.access_token),
                 'refresh_token': str(refresh)
             }
         

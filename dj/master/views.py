@@ -13,6 +13,7 @@ from rest_framework.generics import ListAPIView
 # from django.db.models import F
 from .paginations import trPagination
 from .serializers import trSerializer, DepoSerializer, Serializer, withSerializer, sendSerializer, registerSerializer, loginSerializer
+from .permissions import StaffUser
 
 from . models import Server, Transaction
 
@@ -66,7 +67,7 @@ class transactions(ListAPIView):
 class deposite (APIView):
 
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,StaffUser]
 
     def post(self, request):
         
